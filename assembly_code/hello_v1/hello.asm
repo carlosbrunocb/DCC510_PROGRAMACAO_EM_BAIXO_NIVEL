@@ -5,7 +5,7 @@ message: db 'hello, world!', 10
 
 section .text
 _start:
-	mov	rax, 1		 ;system call number should be stored in rax
+	mov	rax, 1		 ; system call number should be stored in rax
 	
 	mov	rdi, 1		 ; argument #1 in rdi: where to write (descriptor)?
 	mov	rsi, message ; argument #2 in rsi: where does the string start?
