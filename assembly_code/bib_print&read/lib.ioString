@@ -1,0 +1,166 @@
+section .text
+
+exit:
+  	mov rax, 60
+  	xor rdi, rdi
+  	syscall
+
+; ----------------------------------------------------
+; Função que calcula o tamanho da string de entrada
+str_length:			
+  	xor rax, rax	; rax = 0
+
+; o laço principal começa aqui
+.str_length_loop:
+			
+  	; Verifica se o símbolo atual é o finalizador (nulo).
+  	cmp byte [rdi+rax], 0 				
+  	jz .str_length_end 	; Jump se o finalizador nulo foi encontrado
+  						; Caso contrário, vai para o próximo símbolo
+  	inc rax  			; e incrementa o contador
+  
+  	jmp .str_length_loop
+  
+.str_length_end:
+  	ret	
+
+; ----------------------------------------------------
+; imprime uma string
+print_string:
+  	push rdi
+  	call str_length ; retorna o tamanho da string
+  
+  	pop rsi		 ; endereço (contéudo de saída)
+  	mov rdx, rax ; tamanho da string
+  	mov rax, 1	 ; system call de escrita (write syscall)
+  	mov rdi, 1	 ; descritor (1 - para stdout)
+  	syscall		 ; chamada de sistema (write)
+  	ret
+
+; ----------------------------------------------------
+; exibi na saida padrão um caractere
+print_char:
+    push rdi
+    mov rdi, rsp ; rdi deve ser o local memória do inicio da string 
+    call print_string
+    pop rdi
+    ret
+
+; ----------------------------------------------------
+; imprime uma nova linha na saida padrão
+print_newline:
+  	push 10
+  	mov rax, 1   ; identificador da syscall 'write'
+  	mov rdi, 1   ; descritor do arquivo stdout
+  	mov rsi, rsp ; local de onde os dados são obtidos
+  	mov rdx, 1   ; quantidade de bytes a ser escrita
+  	syscall
+  	pop rax
+  	xor rax, rax
+  	ret
+
+; ----------------------------------------------------
+; ler um char e retorna-o no RAX
+read_char:
+    xor rax, rax  ; 0 é a id da system call read (syscall number)
+    mov rdi, 0    ; 0 é descritor de arquivo para entrada padrão (stdin)
+    push 0        ; aloca 8 bytes na pilha
+    mov rsi, rsp  ; buffer (endereço)
+    mov rdx, 1    ; read one byte
+    syscall
+    
+    pop rax
+    ret
+
+; ----------------------------------------------------
+; ler uma palavra e retorna o endereço do inicio 
+; da palavra em RAX.
+;
+; # Finalidade dos registradores
+; 	* rdi - endereço do inicio da palavra (address of buffer)
+; 	* rsi - tamanho da palavra (size of buffer)
+; 	* rax - 1. returna 0 se palavra é maior que tamanho 
+;			   definido em rsi;
+;			2. returna o endereço da palavra se o tamanho da
+;			   palavra de entrada se ajusta ao tamanho definido
+;
+; # Observações:
+; 	A leitura inicial da palavra ingora todos os tipos de espaço 
+;	em branco até que se encontre um caracter que não seja espaço
+;	em branco, então, se qualquer outro espaço em branco for 
+;	inserido a leitura de caracter é terminada e um caracter nulo
+;	é inserido. E o endereço da palavra é retornado
+read_word:
+    mov rbx, rsi  ; copia o tamanho do buffer para rbx
+    xor rcx, rcx  ; inicializa o contador
+    dec rbx       ; ajusta o tamanho da palavra para 
+				  ; comportar o caracter nulo (terminador)
+				  ; decrementa o tamanho do buffer em uma unidade
+
+.read_word_find_word:
+    push rdi	; endereço da palavra
+    push rbx	; tamanho do buffer
+    push rcx	; contador do tamanho da palavra
+    call read_char
+    pop rcx
+    pop rbx
+    pop rdi
+    ; o caracter é retornado para o registrador rax
+	; no entanto, o tamanho do char é um byte (8 bits) 
+	; de 4 bytes do rax, portanto, pode se usar apenas 
+	; um segmento do registrador o al do rax 
+	; [rax (al)]
+	
+	; verificação de ocorrência de espaço em branco:
+	; 	- Tabulação (Tab), nova linha (line feed, carriage return),
+	; 	  espaço (space), Nulo (NULL)
+    cmp al, 0x09       ; tab
+    je .read_word_find_word
+    cmp al, 0x0A       ; line feed
+    je .read_word_find_word
+    cmp al, 0x0D       ; carriage return
+    je .read_word_find_word
+    cmp al, 0x20       ; space
+    je .read_word_find_word
+    test al, al        ; null terminator
+    jz .read_word_done
+
+.read_word_letters_in_word:
+    mov byte[rdi + rcx], al	; escreve o caracter lido 
+							; em uma posição da memória
+    inc rcx	; incrementa o contador
+
+    push rdi
+    push rbx
+    push rcx
+    call read_char
+    pop rcx
+    pop rbx
+    pop rdi
+
+    cmp al, 0x09       ; tab
+    je .read_word_done
+    cmp al, 0x0A       ; line feed
+    je .read_word_done
+    cmp al, 0x0D       ; carriage return
+    je .read_word_done
+    cmp al, 0x20       ; space
+    je .read_word_done
+    test al, al        ; null terminator
+    jz .read_word_done
+	
+	; verifica se palavra lida não estou o tamanho do buffer
+    cmp rcx, rbx       
+    je .read_word_too_long	
+
+    jmp .read_word_letters_in_word
+
+.read_word_done:
+    mov byte[rdi + rcx], 0  ; null terminate the string
+    mov rax, rdi
+    mov rdx, rcx
+    ret
+
+.read_word_too_long:
+    xor rax, rax
+    ret

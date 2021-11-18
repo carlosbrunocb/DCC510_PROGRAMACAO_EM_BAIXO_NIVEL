@@ -22,24 +22,24 @@ print_hex:
 	mov rcx, 64		; até que ponto estamos deslocando rax?
 
 iterate:
-	push rax 								; Salva o valor inicial de rax
+	push rax 				; Salva o valor inicial de rax
 	sub rcx, 4		
-	sar rax, cl							; desloca para 60, 56, 52, ... 4, 0
-													; o registrador cl é a menor parte rcx
-	and rax, 0xf 						; limpa todos os bits, exceto os quatro menos signifivativos
+	sar rax, cl				; desloca para 60, 56, 52, ... 4, 0
+							; o registrador cl é a menor parte rcx
+	and rax, 0xf 			; limpa todos os bits, exceto os quatro menos signifivativos
 	lea rsi, [codes + rax]	; obtém o código de carectere de um dígito hecadecimal
 	
-	mov rax, 1 							;
+	mov rax, 1 				;
 	
-	push rcx 								; syscall alterará rcx
-	syscall 								; rax = 1 (31) - o identificador de write,
-													; rdi = 1 para stdout,
-													; rsi = o endereço de um caractere; veja linha 30
+	push rcx 			    ; syscall alterará rcx
+	syscall 				; rax = 1 (31) - o identificador de write,
+							; rdi = 1 para stdout,
+							; rsi = o endereço de um caractere; veja linha 30
 	
 	pop rcx
 	
-	pop rax 								; ˆ veja a linha 25 ˆ
-	test rcx, rcx 					; rcx = 0 quando todos os digitos forem mostrados
+	pop rax 				; ˆ veja a linha 25 ˆ
+	test rcx, rcx 			; rcx = 0 quando todos os digitos forem mostrados
 	jnz iterate
  
  ret
